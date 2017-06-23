@@ -1,12 +1,12 @@
-from math import log2
-from typing import Iterable
+from math import log2, sqrt, log
+from typing import Iterable, List
 
 import matplotlib.pyplot as plt
 import numpy
 import pandas
 from hics.contrast_measure import HiCS
 from numpy import ndarray
-from numpy.random import randint, rand, choice, shuffle
+from numpy.random import randint, rand, shuffle
 from pynverse import inversefunc
 
 
@@ -25,9 +25,10 @@ target_vs_noise_for_partial_cause_feature = inversefunc(mutual_information_of_pa
                                                         image=[0, 1])
 
 
-def test(relevant_feature_count=10, total_feature_count=1000, iterations=1000):
-    data = test_dataset(relevant_feature_count=relevant_feature_count, noise_feature_count=total_feature_count - relevant_feature_count)
-    features_with_target = data.columns.values
+def test(relevant_feature_count=10, total_feature_count=100, iterations=1000):
+    data = test_dataset(relevant_feature_count=relevant_feature_count,
+                        noise_feature_count=total_feature_count - relevant_feature_count)
+    features_with_target = data.columns.values  # type:List[str]
     features = list(filter(lambda i: i != 'target', features_with_target))
     shuffle(features)
     hics = HiCS(data, alpha=.001, iterations=1, categorical_features=features_with_target)
@@ -35,11 +36,19 @@ def test(relevant_feature_count=10, total_feature_count=1000, iterations=1000):
     class ValuesWithAverage:
         def __init__(self):
             self.values = []
-            self.average = 0
+            self.sum = 0.0
 
         def append(self, value: float):
             self.values.append(value)
-            self.average = (self.average + value) / (len(self.values) + 1)
+            self.sum += value
+
+        @property
+        def average(self):
+            l = len(self.values)
+            if (l == 0):
+                return 0
+
+            return self.sum / l
 
         def partial_averages(self) -> Iterable[float]:
             sum = 0
@@ -48,26 +57,36 @@ def test(relevant_feature_count=10, total_feature_count=1000, iterations=1000):
                 count = index + 1
                 yield sum / count
 
-    def run_hics():
+    def run_hics(steered: bool = True, steered_exploration_weight=.1) -> List[float]:
         mutual_by_feature = dict([(feature, ValuesWithAverage()) for feature in features])
 
         chosen_relevant_feature_counts = []
 
         for iteration in range(iterations):
-            feature = choice(features)
-            mutual_by_feature[feature].append(hics.calculate_contrast([feature], 'target'))
             items = list(mutual_by_feature.items())
             chosen = sorted(items, key=lambda x: x[1].average, reverse=True)[:relevant_feature_count]
             chosen_relevant_feature_count = len([c for c in chosen if c[0].startswith("mutual")])
             chosen_relevant_feature_counts.append(chosen_relevant_feature_count)
-            print(f"Iteration {iteration}, chosen relevant features: {chosen_relevant_feature_count}.")
 
-        plt.ylabel("relevant chosen features")
-        plt.xlabel("iteration")
-        plt.plot(chosen_relevant_feature_counts)
-        plt.show()
+            def priority(x):
+                return (x[1].average if steered else 0) + steered_exploration_weight * sqrt(
+                    log(iteration + 1) / (len(x[1].values) + 1))
 
-    run_hics()
+            feature, value = max(items, key=priority)
+
+            print(
+                f"Iteration {iteration}, chosen relevant features: {chosen_relevant_feature_count}, average {value.average} in priority {priority((feature, value))}.")
+
+            mutual_by_feature[feature].append(hics.calculate_contrast([feature], 'target'))
+
+        return chosen_relevant_feature_counts
+
+    plt.ylabel("chosen relevant features")
+    plt.xlabel("iteration")
+    plt.plot(run_hics(steered=True), label="Steered")
+    plt.plot(run_hics(steered=False), label="Flat")
+    plt.legend()
+    plt.show()
 
 
 def test_dataset(relevant_feature_count: int, noise_feature_count: int, dataset_size=10000,
