@@ -1,12 +1,13 @@
 from math import log2, sqrt, log
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy
 import pandas
 from hics.contrast_measure import HiCS
 from numpy import ndarray
-from numpy.random import randint, rand, shuffle
+from numpy.random import randint, rand, shuffle, random
+from random import choice
 from pynverse import inversefunc
 
 
@@ -25,7 +26,7 @@ target_vs_noise_for_partial_cause_feature = inversefunc(mutual_information_of_pa
                                                         image=[0, 1])
 
 
-def test(relevant_feature_count=10, total_feature_count=100, iterations=1000):
+def test(relevant_feature_count=10, total_feature_count=200, iterations=500):
     data = test_dataset(relevant_feature_count=relevant_feature_count,
                         noise_feature_count=total_feature_count - relevant_feature_count)
     features_with_target = data.columns.values  # type:List[str]
@@ -57,7 +58,7 @@ def test(relevant_feature_count=10, total_feature_count=100, iterations=1000):
                 count = index + 1
                 yield sum / count
 
-    def run_hics(steered: bool = True, steered_exploration_weight=.1) -> List[float]:
+    def run_hics(steered: Optional[bool] = True, steered_exploration_weight=1) -> List[float]:
         mutual_by_feature = dict([(feature, ValuesWithAverage()) for feature in features])
 
         chosen_relevant_feature_counts = []
@@ -72,10 +73,10 @@ def test(relevant_feature_count=10, total_feature_count=100, iterations=1000):
                 return (x[1].average if steered else 0) + steered_exploration_weight * sqrt(
                     log(iteration + 1) / (len(x[1].values) + 1))
 
-            feature, value = max(items, key=priority)
+            feature, value = max(items, key=priority) if steered is not None else choice(items)
 
             print(
-                f"Iteration {iteration}, chosen relevant features: {chosen_relevant_feature_count}, average {value.average} in priority {priority((feature, value))}.")
+                f"Iteration {iteration}, chosen relevant features: {chosen_relevant_feature_count}, average {value.average:0.3f} in priority {priority((feature, value)):0.3f}.")
 
             mutual_by_feature[feature].append(hics.calculate_contrast([feature], 'target'))
 
@@ -83,6 +84,7 @@ def test(relevant_feature_count=10, total_feature_count=100, iterations=1000):
 
     plt.ylabel("chosen relevant features")
     plt.xlabel("iteration")
+    # plt.plot(run_hics(steered=None), label="Random")
     plt.plot(run_hics(steered=True), label="Steered")
     plt.plot(run_hics(steered=False), label="Flat")
     plt.legend()
@@ -90,7 +92,7 @@ def test(relevant_feature_count=10, total_feature_count=100, iterations=1000):
 
 
 def test_dataset(relevant_feature_count: int, noise_feature_count: int, dataset_size=10000,
-                 mutual_information=.1):
+                 mutual_information=.5, slight_mutual_information=.45, noise_mutual_information=0):
     def combination_count(bits: int) -> int:
         return 1 << bits
 
@@ -104,13 +106,22 @@ def test_dataset(relevant_feature_count: int, noise_feature_count: int, dataset_
         return [f"{value},{extra_noise}" for value, extra_noise in zip(values, random_values(bits=noise_bits))]
 
     target = random_values(bits=1)
+
+    def feature(mutual_information: float):
+        target_share = target_vs_noise_for_partial_cause_feature(mutual_information)
+        return joined_with_noise(random_merged(target, random_values(bits=1), target_share), noise_bits=3)
+
     features = {'target': target}
-    for i in range(noise_feature_count):
-        features[f"noise-{i}"] = random_values(bits=1)
+    for i in range(int(noise_feature_count * 8 / 10)):
+        features[f"noise-{i}"] = feature(noise_mutual_information)
+
+    for i in range(int(noise_feature_count * 2 / 10)):
+        features[f"noise2-{i}"] = feature(slight_mutual_information)
+
     target_share = target_vs_noise_for_partial_cause_feature(mutual_information)
     for i in range(relevant_feature_count):
-        merged = random_merged(target, random_values(bits=1), target_share)
-        features[f"mutual-{i}"] = joined_with_noise(merged, noise_bits=3)
+        features[f"mutual-{i}"] = joined_with_noise(random_merged(target, random_values(bits=1), target_share),
+                                                    noise_bits=3)
 
     return pandas.DataFrame(features)
 
