@@ -32,7 +32,7 @@ def timestamp() -> str:
     return strftime('%Y%m%d-%H%M%S')
 
 
-def test(relevant_feature_count=10, total_feature_count=200, iterations=1000, runs=10, steered_exploration_weight=1):
+def test(relevant_feature_count=10, total_feature_count=100, iterations=1000, runs=10, exploitation=.5):
     correlation_distribution = plateau_distribution(total_feature_count)
     data = generate_data(relevant_feature_count=relevant_feature_count,
                          correlation_distribution=correlation_distribution)
@@ -58,7 +58,7 @@ def test(relevant_feature_count=10, total_feature_count=200, iterations=1000, ru
 
             return self.sum / l
 
-    def run_hics(steered: Optional[bool] = True, steered_exploration_weight=steered_exploration_weight) -> List[float]:
+    def run_hics(steered: Optional[bool] = True) -> List[float]:
         mutual_by_feature = dict([(feature, ValuesWithAverage()) for feature in features])
 
         chosen_relevant_feature_counts = []
@@ -70,7 +70,7 @@ def test(relevant_feature_count=10, total_feature_count=200, iterations=1000, ru
             chosen_relevant_feature_counts.append(chosen_relevant_feature_count)
 
             def priority(x):
-                return (x[1].average if steered else 0) + steered_exploration_weight * sqrt(
+                return x[1].average * (exploitation if steered else 0) + sqrt(
                     log(iteration + 1) / (len(x[1].values) + 1))
 
             feature, value = max(items, key=priority) if steered is not None else choice(items)
@@ -86,8 +86,6 @@ def test(relevant_feature_count=10, total_feature_count=200, iterations=1000, ru
     plt.ylabel("chosen relevant features")
     plt.xlabel("iteration")
 
-    # plt.plot(run_hics(steered=None), label="Random")
-
     def plot_average_and_deviation_by_time(steered: bool):
         color = "b" if steered else "r"
         label = "Steered" if steered else "Flat"
@@ -102,15 +100,19 @@ def test(relevant_feature_count=10, total_feature_count=200, iterations=1000, ru
                          color=color, alpha=.3)
         plt.plot(average, label=label, color=color)
 
+    # plot_average_and_deviation_by_time(steered=None, label="Random")
     plot_average_and_deviation_by_time(steered=True)
     plot_average_and_deviation_by_time(steered=False)
 
-    plt.legend()
+    plt.legend(loc=2)
+
+    title = f"exploitation{exploitation}_{total_feature_count}features_{runs}runs"
+    plt.title(title)
 
     directory = Path(".") / "plots"
     directory.mkdir(exist_ok=True)
     fig = plt.gcf()
-    fig.savefig(str(directory / (timestamp() + ".png")))
+    fig.savefig(str(directory / f"{timestamp()}_{title}.png"))
 
     plt.show()
 
