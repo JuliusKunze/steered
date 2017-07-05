@@ -32,14 +32,8 @@ def timestamp() -> str:
     return strftime('%Y%m%d-%H%M%S')
 
 
-def test(relevant_feature_count=10, total_feature_count=100, iterations=1000, runs=10, exploitation=.5):
+def test(relevant_feature_count=10, total_feature_count=100, iterations=1000, runs=10, exploitation=1):
     correlation_distribution = plateau_distribution(total_feature_count)
-    data = generate_data(relevant_feature_count=relevant_feature_count,
-                         correlation_distribution=correlation_distribution)
-    features_with_target = data.columns.values  # type:List[str]
-    features = list(filter(lambda i: i != 'target', features_with_target))
-    shuffle(features)
-    hics = HiCS(data, alpha=.001, iterations=1, categorical_features=features_with_target)
 
     class ValuesWithAverage:
         def __init__(self):
@@ -59,6 +53,13 @@ def test(relevant_feature_count=10, total_feature_count=100, iterations=1000, ru
             return self.sum / l
 
     def run_hics(steered: Optional[bool] = True) -> List[float]:
+        data = generate_data(relevant_feature_count=relevant_feature_count,
+                             correlation_distribution=correlation_distribution)
+        features_with_target = data.columns.values  # type:List[str]
+        features = list(filter(lambda i: i != 'target', features_with_target))
+        shuffle(features)
+        hics = HiCS(data, alpha=.001, iterations=1, categorical_features=features_with_target)
+
         mutual_by_feature = dict([(feature, ValuesWithAverage()) for feature in features])
 
         chosen_relevant_feature_counts = []
@@ -100,7 +101,7 @@ def test(relevant_feature_count=10, total_feature_count=100, iterations=1000, ru
                          color=color, alpha=.3)
         plt.plot(average, label=label, color=color)
 
-    # plot_average_and_deviation_by_time(steered=None, label="Random")
+    # TODO plot_average_and_deviation_by_time(steered=None, label="Random")
     plot_average_and_deviation_by_time(steered=True)
     plot_average_and_deviation_by_time(steered=False)
 
