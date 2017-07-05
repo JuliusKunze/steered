@@ -32,29 +32,45 @@ def timestamp() -> str:
     return strftime('%Y%m%d-%H%M%S')
 
 
-def test(relevant_feature_count=10, total_feature_count=100, iterations=1000, runs=10, exploitation=1):
+class ValuesWithAverage:
+    def __init__(self):
+        self.values = []
+        self.sum = 0.0
+        self.sum_of_squared_deviations = 0
+
+    def append(self, value: float):
+        old_average = self.average
+
+        self.values.append(value)
+        self.sum += value
+
+        self.sum_of_squared_deviations += (value - old_average) * (value - self.average)
+
+    @property
+    def count(self):
+        return len(self.values)
+
+    @property
+    def average(self):
+        if self.count == 0:
+            return 0
+
+        return self.sum / self.count
+
+    @property
+    def variance_of_input(self) -> float:
+        return self.sum_of_squared_deviations / (self.count - 1)
+
+    @property
+    def variance_of_average(self) -> float:
+        return self.variance_of_input / self.count
+
+
+def test(relevant_feature_count=10, total_feature_count=100, iterations=1000, runs=10,
+         exploitations=(0, .5, 1, 1.5, 2, 2.5, 3)):
     correlation_distribution = plateau_distribution(total_feature_count)
 
-    class ValuesWithAverage:
-        def __init__(self):
-            self.values = []
-            self.sum = 0.0
-
-        def append(self, value: float):
-            self.values.append(value)
-            self.sum += value
-
-        @property
-        def average(self):
-            l = len(self.values)
-            if l == 0:
-                return 0
-
-            return self.sum / l
-
-    def run_hics(steered: Optional[bool] = True) -> List[float]:
-        data = generate_data(relevant_feature_count=relevant_feature_count,
-                             correlation_distribution=correlation_distribution)
+    def run_hics(data, exploitation: Optional[float] = True, random=False) -> List[float]:
         features_with_target = data.columns.values  # type:List[str]
         features = list(filter(lambda i: i != 'target', features_with_target))
         shuffle(features)
@@ -71,10 +87,11 @@ def test(relevant_feature_count=10, total_feature_count=100, iterations=1000, ru
             chosen_relevant_feature_counts.append(chosen_relevant_feature_count)
 
             def priority(x):
-                return x[1].average * (exploitation if steered else 0) + sqrt(
-                    log(iteration + 1) / (len(x[1].values) + 1))
+                feature, value = x
 
-            feature, value = max(items, key=priority) if steered is not None else choice(items)
+                return value.average * exploitation + sqrt(log(iteration + 1) / (len(value.values) + 1))
+
+            feature, value = choice(items) if random else max(items, key=priority)
 
             print(
                 f"Iteration {iteration}, chosen relevant features: {chosen_relevant_feature_count}, "
@@ -87,27 +104,29 @@ def test(relevant_feature_count=10, total_feature_count=100, iterations=1000, ru
     plt.ylabel("chosen relevant features")
     plt.xlabel("iteration")
 
-    def plot_average_and_deviation_by_time(steered: bool):
-        color = "b" if steered else "r"
-        label = "Steered" if steered else "Flat"
-
-        mutual_information_by_run_by_time = np.array([run_hics(steered=steered) for _ in range(runs)])
+    def plot_average_and_deviation_by_time(exploitation: float, data_for_runs, color):
+        mutual_information_by_run_by_time = np.array(
+            [run_hics(exploitation=exploitation, data=data) for data in data_for_runs])
         average = np.average(mutual_information_by_run_by_time, axis=0)
         deviation = np.std(mutual_information_by_run_by_time, axis=0)
 
         plt.fill_between(range(len(average)),
                          list(average - deviation),
                          list(average + deviation),
-                         color=color, alpha=.3)
-        plt.plot(average, label=label, color=color)
+                         color=color, alpha=.15)
+        plt.plot(average, label=f"exploit{exploitation}", c=color)
 
+    data_for_runs = [generate_data(relevant_feature_count=relevant_feature_count,
+                                   correlation_distribution=correlation_distribution) for _ in range(runs)]
+
+    colors = plt.cm.rainbow(np.linspace(0, 1, len(exploitations)))
     # TODO plot_average_and_deviation_by_time(steered=None, label="Random")
-    plot_average_and_deviation_by_time(steered=True)
-    plot_average_and_deviation_by_time(steered=False)
+    for exploitation, color in zip(exploitations, colors):
+        plot_average_and_deviation_by_time(exploitation=exploitation, data_for_runs=data_for_runs, color=color)
 
     plt.legend(loc=2)
 
-    title = f"exploitation{exploitation}_{total_feature_count}features_{runs}runs"
+    title = f"{total_feature_count}features_{runs}runs"
     plt.title(title)
 
     directory = Path(".") / "plots"
@@ -159,4 +178,5 @@ def two_relevant_features_distribution(total_feature_count: int) -> List[float]:
     return [1, 0.95] + ([0] * (total_feature_count - 2))
 
 
-test()
+if __name__ == '__main__':
+    test()
