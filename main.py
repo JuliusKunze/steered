@@ -35,13 +35,34 @@ target_vs_noise_for_partial_cause_feature = inversefunc(mutual_information_of_pa
 
 
 class Items:
-    def __init__(self, mutual_by_feature: Dict[str, ValuesWithStats], num_features_to_select: int, iteration: int):
+    def __init__(self, mutual_by_feature: Dict[str, ValuesWithStats], true_correlation_distribution: List[float],
+                 num_features_to_select: int, iteration: int, name: str):
+        self.name = name
+        self.true_correlation_distribution = true_correlation_distribution
         self.iteration = iteration
         self.items = list(mutual_by_feature.items())  # type:List[Tuple[str, ValuesWithStats]]
         self.sorted_features = sorted(self.items, key=lambda x: x[1].average, reverse=True)
         self.selected = self.sorted_features[:num_features_to_select]
         self.non_selected = self.sorted_features[num_features_to_select:]
-        self.selected_relevant_feature_count = len([s for s in self.selected if s[0].startswith("mutual")])
+        self.selected_relevant_feature_count = len([s for s in self.selected if int(s[0]) < num_features_to_select])
+        self.items_by_index = sorted(self.items, key=lambda x: int(x[0]))
+
+    def show_plot(self, color='red'):
+        plt.plot(self.true_correlation_distribution, color='blue')
+
+        plt.ylabel('mutual information')
+        plt.xlabel('feature')
+
+
+        average = np.array([value.average for feature, value in self.items_by_index])
+        deviation = np.array([value.average_as_gaussian.standard_deviation for feature, value in self.items_by_index])
+
+        plt.fill_between(range(len(average)),
+                         list(average - deviation),
+                         list(average + deviation),
+                         color=color, alpha=.15)
+        plt.plot(average, label=self.name, c=color)
+        plt.show()
 
 
 class Strategy:
@@ -64,7 +85,8 @@ def gaussian_strategy():
         def loss(pair):
             s, n = pair
 
-            return (n[1].average_as_gaussian - s[1].average_as_gaussian).expected_value_if_truncated_of_negative_mapped_to_0
+            return (
+            n[1].average_as_gaussian - s[1].average_as_gaussian).expected_value_if_truncated_of_negative_mapped_to_0
 
         s, n = max(selected_nonselected_pairs, key=loss)
 
@@ -85,7 +107,7 @@ def exploitation_strategy(exploitation: float):
     return Strategy(choose_by_exploitation, name=f'exploit{exploitation}')
 
 
-def test(strategies: List[Strategy], num_features_to_select=10, total_feature_count=100, iterations=1000, runs=20):
+def test(strategies: List[Strategy], num_features_to_select=10, total_feature_count=100, iterations=1000, runs=1):
     correlation_distribution = plateau_distribution(total_feature_count)
 
     def run_hics(data, strategy: Strategy) -> List[float]:
@@ -100,7 +122,12 @@ def test(strategies: List[Strategy], num_features_to_select=10, total_feature_co
 
         for iteration in range(iterations):
             items = Items(mutual_by_feature=mutual_by_feature, num_features_to_select=num_features_to_select,
-                          iteration=iteration)
+                          iteration=iteration, true_correlation_distribution=correlation_distribution,
+                          name=strategy.name)
+
+            if iteration % 100 == 0:
+                items.show_plot()
+
             selected_relevant_feature_counts.append(items.selected_relevant_feature_count)
 
             feature, value = strategy.choose(items)
@@ -123,11 +150,10 @@ def test(strategies: List[Strategy], num_features_to_select=10, total_feature_co
                          color=color, alpha=.15)
         plt.plot(average, label=strategy.name, c=color)
 
-    data_for_runs = [generate_data(relevant_feature_count=num_features_to_select,
-                                   correlation_distribution=correlation_distribution) for _ in range(runs)]
+    data_for_runs = [generate_data(correlation_distribution=correlation_distribution) for _ in range(runs)]
 
-    plt.ylabel("chosen relevant features")
-    plt.xlabel("iteration")
+    plt.ylabel('chosen relevant features')
+    plt.xlabel('iteration')
 
     colors = plt.cm.rainbow(np.linspace(0, 1, len(strategies)))
     # TODO plot_average_and_deviation_by_time(steered=None, label="Random")
@@ -142,12 +168,12 @@ def test(strategies: List[Strategy], num_features_to_select=10, total_feature_co
     directory = Path(".") / "plots"
     directory.mkdir(exist_ok=True)
     fig = plt.gcf()
-    fig.savefig(str(directory / f"{timestamp()}_{title}.png"), dpi=900)
+    fig.savefig(str(directory / f"{timestamp()}_{title}.svg"))
 
     plt.show()
 
 
-def generate_data(relevant_feature_count: int, correlation_distribution: List[float], dataset_size=10000,
+def generate_data(correlation_distribution: List[float], dataset_size=10000,
                   show_distribution: bool = False):
     if show_distribution:
         plt.plot(correlation_distribution)
@@ -174,8 +200,7 @@ def generate_data(relevant_feature_count: int, correlation_distribution: List[fl
     features = {'target': target}
 
     for i in range(len(correlation_distribution)):
-        features[f"{'mutual' if i < relevant_feature_count else 'noise'}-{i}"] = feature(
-            correlation_distribution[i])
+        features[str(i)] = feature(correlation_distribution[i])
 
     df = pandas.DataFrame(features)
 
