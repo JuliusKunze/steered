@@ -2,7 +2,7 @@ from math import log2, sqrt, log, exp
 from pathlib import Path
 from random import choice
 from time import strftime
-from typing import List, Optional
+from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,6 +11,12 @@ from hics.contrast_measure import HiCS
 from numpy import ndarray
 from numpy.random import randint, rand, shuffle
 from pynverse import inversefunc
+
+from stats import ValuesWithStats
+
+
+def timestamp() -> str:
+    return strftime('%Y%m%d-%H%M%S')
 
 
 def code_length(p: float) -> float:
@@ -28,55 +34,16 @@ target_vs_noise_for_partial_cause_feature = inversefunc(mutual_information_of_pa
                                                         image=[0, 1])
 
 
-def timestamp() -> str:
-    return strftime('%Y%m%d-%H%M%S')
-
-
-class ValuesWithAverage:
-    def __init__(self):
-        self.values = []
-        self.sum = 0.0
-        self.sum_of_squared_deviations = 0
-
-    def append(self, value: float):
-        old_average = self.average
-
-        self.values.append(value)
-        self.sum += value
-
-        self.sum_of_squared_deviations += (value - old_average) * (value - self.average)
-
-    @property
-    def count(self):
-        return len(self.values)
-
-    @property
-    def average(self):
-        if self.count == 0:
-            return 0
-
-        return self.sum / self.count
-
-    @property
-    def variance_of_input(self) -> float:
-        return self.sum_of_squared_deviations / (self.count - 1)
-
-    @property
-    def variance_of_average(self) -> float:
-        return self.variance_of_input / self.count
-
-
-def test(relevant_feature_count=10, total_feature_count=100, iterations=1000, runs=10,
+def test(relevant_feature_count=10, total_feature_count=100, iterations=1000, runs=50,
          exploitations=(0, .5, 1, 1.5, 2, 2.5, 3)):
     correlation_distribution = plateau_distribution(total_feature_count)
 
-    def run_hics(data, exploitation: Optional[float] = True, random=False) -> List[float]:
+    def run_hics(data, exploitation: float, random=False) -> List[float]:
         features_with_target = data.columns.values  # type:List[str]
         features = list(filter(lambda i: i != 'target', features_with_target))
-        shuffle(features)
         hics = HiCS(data, alpha=.001, iterations=1, categorical_features=features_with_target)
 
-        mutual_by_feature = dict([(feature, ValuesWithAverage()) for feature in features])
+        mutual_by_feature = dict([(feature, ValuesWithStats()) for feature in features])
 
         chosen_relevant_feature_counts = []
 
@@ -87,9 +54,9 @@ def test(relevant_feature_count=10, total_feature_count=100, iterations=1000, ru
             chosen_relevant_feature_counts.append(chosen_relevant_feature_count)
 
             def priority(x):
-                feature, value = x
+                feature, stats = x
 
-                return value.average * exploitation + sqrt(log(iteration + 1) / (len(value.values) + 1))
+                return stats.average * exploitation + sqrt(log(iteration + 1) / (stats.count + 1))
 
             feature, value = choice(items) if random else max(items, key=priority)
 
@@ -132,13 +99,13 @@ def test(relevant_feature_count=10, total_feature_count=100, iterations=1000, ru
     directory = Path(".") / "plots"
     directory.mkdir(exist_ok=True)
     fig = plt.gcf()
-    fig.savefig(str(directory / f"{timestamp()}_{title}.png"))
+    fig.savefig(str(directory / f"{timestamp()}_{title}.png"), dpi=900)
 
     plt.show()
 
 
 def generate_data(relevant_feature_count: int, correlation_distribution: List[float], dataset_size=10000,
-                  show_distribution: bool = False):
+                  show_distribution: bool = True):
     if show_distribution:
         plt.plot(correlation_distribution)
         plt.show()
@@ -167,7 +134,9 @@ def generate_data(relevant_feature_count: int, correlation_distribution: List[fl
         features[f"{'mutual' if i < relevant_feature_count else 'noise'}-{i}"] = feature(
             correlation_distribution[i])
 
-    return pandas.DataFrame(features)
+    df = pandas.DataFrame(features)
+
+    return df.reindex_axis(shuffle(df.columns), axis=1)
 
 
 def plateau_distribution(total_feature_count: int) -> List[float]:
