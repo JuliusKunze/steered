@@ -60,8 +60,8 @@ class PartialDerivativesRelativeToMutualInformationLoss:
 
         session = tf.Session()
 
-        averages_input = [value.average for value in values.values()]
-        variances_input = [value.variance_of_average for value in values.values()]
+        averages_input = [value.mean for value in values.values()]
+        variances_input = [value.variance_of_mean for value in values.values()]
         (average_gradients, variance_gradients), loss = session.run(
             [model.average_and_variance_gradients, model.loss], {averages: averages_input, variances: variances_input})
 
