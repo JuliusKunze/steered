@@ -5,16 +5,19 @@ from typing import Callable, Tuple, Dict, List
 import numpy as np
 from matplotlib import pyplot as plt
 
-from stats import ValuesWithStats
+from stats import RandomVariableSamples
 
 
 class Items:
-    def __init__(self, mutual_by_feature: Dict[str, ValuesWithStats], true_correlation_distribution: List[float],
+    """
+    Information that is needed allow a decision which feature should be evaluated next using HiCS.
+    """
+    def __init__(self, mutual_by_feature: Dict[str, RandomVariableSamples], true_correlation_distribution: List[float],
                  num_features_to_select: int, iteration: int, name: str):
         self.name = name
         self.true_correlation_distribution = true_correlation_distribution
         self.iteration = iteration
-        self.items = list(mutual_by_feature.items())  # type:List[Tuple[str, ValuesWithStats]]
+        self.items = list(mutual_by_feature.items())  # type:List[Tuple[str, RandomVariableSamples]]
         self.sorted_features = sorted(self.items, key=lambda x: x[1].mean, reverse=True)
         self.selected = self.sorted_features[:num_features_to_select]
         self.non_selected = self.sorted_features[num_features_to_select:]
@@ -50,20 +53,23 @@ class Items:
 
 
 class Strategy:
-    def __init__(self, choose: Callable[[Items], Tuple[str, ValuesWithStats]], name: str):
+    """
+    A decision strategy for which feature should be evaluated next using HiCS.
+    """
+    def __init__(self, choose: Callable[[Items], Tuple[str, RandomVariableSamples]], name: str):
         self.name = name
         self.choose = choose
 
 
 def random_strategy():
-    def choose_random(items: Items) -> Tuple[str, ValuesWithStats]:
+    def choose_random(items: Items) -> Tuple[str, RandomVariableSamples]:
         return random.choice(items)
 
     return Strategy(choose_random, name='random')
 
 
 def gaussian_strategy():
-    def choose_by_gaussian(items: Items) -> Tuple[str, ValuesWithStats]:
+    def choose_by_gaussian(items: Items) -> Tuple[str, RandomVariableSamples]:
         selected_nonselected_pairs = [(s, n) for n in items.non_selected for s in items.selected]
 
         def loss(pair):
@@ -80,7 +86,7 @@ def gaussian_strategy():
 
 
 def exploitation_strategy(exploitation: float):
-    def choose_by_exploitation(items: Items) -> Tuple[str, ValuesWithStats]:
+    def choose_by_exploitation(items: Items) -> Tuple[str, RandomVariableSamples]:
         def priority(x):
             feature, stats = x
 

@@ -51,9 +51,9 @@ class GaussianRandomVariable:
         return f'N({self.mean:0.2f}, {self.standard_deviation:0.2f})'
 
 
-class ValuesWithStats:
+class RandomVariableSamples:
     """
-        Allows collecting samples from a single, arbitrary distribution that can thereby be estimated.
+        Allows collecting samples from a single, arbitrary random variable that can thereby be estimated.
     """
 
     def __init__(self):

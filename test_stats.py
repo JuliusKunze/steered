@@ -1,11 +1,11 @@
 from unittest import TestCase
 
-from stats import ValuesWithStats
+from stats import RandomVariableSamples
 
 
-class TestValuesWithStats(TestCase):
+class TestRandomVariableSamples(TestCase):
     def test(self):
-        v = ValuesWithStats()
+        v = RandomVariableSamples()
         for e in [1, 2, 2, 3]:
             v.append(e)
 
