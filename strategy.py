@@ -12,27 +12,31 @@ class Items:
     """
     Information that is needed allow a decision which feature should be evaluated next using HiCS.
     """
-    def __init__(self, mutual_by_feature: Dict[str, RandomVariableSamples], true_correlation_distribution: List[float],
+
+    def __init__(self, relevance_by_feature: Dict[str, RandomVariableSamples],
+                 true_relevance_by_feature: Dict[str, float],
                  num_features_to_select: int, iteration: int, name: str):
         self.name = name
-        self.true_correlation_distribution = true_correlation_distribution
+        self.true_relevances = sorted(true_relevance_by_feature.items(), key=lambda x: x[1], reverse=True)
+        self.features = [feature for feature, _ in self.true_relevances]
+        self.relevant_features = set(feature for feature, correlation in self.true_relevances[:num_features_to_select])
         self.iteration = iteration
-        self.items = list(mutual_by_feature.items())  # type:List[Tuple[str, RandomVariableSamples]]
-        self.sorted_features = sorted(self.items, key=lambda x: x[1].mean, reverse=True)
+        self.relevance_by_feature = relevance_by_feature  # type:Dict[str, RandomVariableSamples]
+        self.sorted_features = sorted(list(relevance_by_feature.items()), key=lambda x: x[1].mean, reverse=True)
         self.selected = self.sorted_features[:num_features_to_select]
         self.non_selected = self.sorted_features[num_features_to_select:]
-        self.selected_relevant_feature_count = len([s for s in self.selected if int(s[0]) < num_features_to_select])
-        self.items_by_index = sorted(self.items, key=lambda x: int(x[0]))
+        self.num_selected_relevant_features = len(set(feature for feature, correlation in self.selected).intersection(self.relevant_features))
 
     def show_plot(self, color='red'):
         plt.ylabel('mutual information')
         plt.xlabel('feature')
 
-        means = np.array([value.mean for feature, value in self.items_by_index])
-        standard_deviations = np.array([value.mean_as_gaussian.standard_deviation for feature, value in self.items_by_index])
+        means = np.array([self.relevance_by_feature[feature].mean for feature in self.features])
+        standard_deviations = np.array(
+            [self.relevance_by_feature[feature].mean_as_gaussian.standard_deviation for feature in self.features])
 
         markersize = 2
-        plt.plot(range(len(means)), self.true_correlation_distribution, linestyle="None",
+        plt.plot(range(len(means)), [true_relevance for f, true_relevance in self.true_relevances], linestyle="None",
                  marker="o",
                  markersize=markersize,
                  color='blue')
@@ -56,6 +60,7 @@ class Strategy:
     """
     A decision strategy for which feature should be evaluated next using HiCS.
     """
+
     def __init__(self, choose: Callable[[Items], Tuple[str, RandomVariableSamples]], name: str):
         self.name = name
         self.choose = choose
@@ -92,6 +97,6 @@ def exploitation_strategy(exploitation: float):
 
             return stats.mean * exploitation + sqrt(log(items.iteration + 1) / (stats.count + 1))
 
-        return max(items.items, key=priority)
+        return max(items.sorted_features, key=priority)
 
     return Strategy(choose_by_exploitation, name=f'exploit{exploitation}')

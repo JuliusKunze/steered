@@ -17,40 +17,44 @@ def timestamp() -> str:
     return strftime('%Y%m%d-%H%M%S')
 
 
-def main(correlation_distribution: List[float], strategies: List[Strategy], num_features_to_select=10,
-         iterations=10, runs=1):
-    def run_hics(data, strategy: Strategy, plot_step=iterations * 2) -> List[float]:
+def main(relevance_distribution: List[float], strategies: List[Strategy], num_features_to_select=10,
+         iterations=500, runs=1, alpha=.01):
+    def run_hics(data, strategy: Strategy, plot_step=iterations) -> List[float]:
         features_with_target = data.columns.values  # type:List[str]
         features = list(filter(lambda i: i != 'target', features_with_target))
-        hics = HiCS(data, alpha=.001, iterations=1, categorical_features=features_with_target)
+        hics = HiCS(data, alpha=alpha, iterations=1, categorical_features=features_with_target)
+        initial_hics = HiCS(data, alpha=alpha, iterations=500, categorical_features=features_with_target)
 
-        mutual_by_feature = dict(
+        relevance_by_feature = dict(
             [(feature, RandomVariableSamples()) for feature in features])  # type:Dict[str, RandomVariableSamples]
+
+        true_relevance_by_feature = dict(
+            [(feature, initial_hics.calculate_contrast([feature], 'target')) for feature in features])
 
         selected_relevant_feature_counts = []
 
         for iteration in range(iterations):
-            items = Items(mutual_by_feature=mutual_by_feature, num_features_to_select=num_features_to_select,
-                          iteration=iteration, true_correlation_distribution=correlation_distribution,
+            items = Items(relevance_by_feature=relevance_by_feature, num_features_to_select=num_features_to_select,
+                          iteration=iteration, true_relevance_by_feature=true_relevance_by_feature,
                           name=strategy.name)
 
             if iteration % plot_step == plot_step - 1:
                 items.show_plot()
 
-            selected_relevant_feature_counts.append(items.selected_relevant_feature_count)
+            selected_relevant_feature_counts.append(items.num_selected_relevant_features)
 
             feature, value = strategy.choose(items)
 
-            print(f"Iteration {iteration}, chosen relevant features: {items.selected_relevant_feature_count}")
+            print(f"Iteration {iteration}, chosen relevant features: {items.num_selected_relevant_features}")
 
-            mutual_by_feature[feature].append(hics.calculate_contrast([feature], 'target'))
+            relevance_by_feature[feature].append(hics.calculate_contrast([feature], 'target'))
 
         return selected_relevant_feature_counts
 
-    def plot_summary(mutual_information_by_run_by_time_by_strategy: Dict[str, np.ndarray]):
+    def plot_summary(relevance_by_run_by_time_by_strategy: Dict[str, np.ndarray]):
         plt.ylabel('chosen relevant features')
         plt.xlabel('iteration')
-        items = list(mutual_information_by_run_by_time_by_strategy.items())
+        items = list(relevance_by_run_by_time_by_strategy.items())
         colors = plt.cm.rainbow(np.linspace(0, 1, len(items)))
         for (strategy, mutual_information_by_run_by_time), color in zip(items, colors):
             average = np.average(mutual_information_by_run_by_time, axis=0)
@@ -62,15 +66,15 @@ def main(correlation_distribution: List[float], strategies: List[Strategy], num_
                              color=color, alpha=.15)
             plt.plot(average, label=strategy.name, c=color)
         plt.legend(loc=2)
-        title = f"{len(correlation_distribution)}features_{runs}runs"
+        title = f"{len(relevance_distribution)}features_{runs}runs"
         plt.title(title)
         directory = Path(".") / "plots"
         directory.mkdir(exist_ok=True)
         fig = plt.gcf()
-        fig.savefig(str(directory / f"{timestamp()}_{title}.svg"))
+        fig.savefig(str(directory / f"{timestamp()}_{title}.png"))
         plt.show()
 
-    data_for_runs = [generate_data(correlation_distribution=correlation_distribution) for _ in range(runs)]
+    data_for_runs = [generate_data(correlation_distribution=relevance_distribution) for _ in range(runs)]
 
     mutual_information_by_run_by_time_by_strategy = dict([(strategy, np.array(
         [run_hics(data=data, strategy=strategy) for data in data_for_runs])) for strategy in strategies])
@@ -86,9 +90,9 @@ def show_distribution(distribution: List[float]):
 if __name__ == '__main__':
     exploit_strategies = [exploitation_strategy(exploitation) for exploitation in (0, .5, 1, 1.5, 2, 2.5, 3)]
 
-    distribution = linearly_relevant_features() + [.2] * 180
+    distribution = linearly_relevant_features() + [.2] * 20
 
     # show_distribution(distribution)
 
-    main(correlation_distribution=distribution,
-         strategies=[gaussian_strategy(), exploitation_strategy(1.5), exploitation_strategy(0)])
+    main(relevance_distribution=distribution,
+         strategies=[exploitation_strategy(0), gaussian_strategy(), exploitation_strategy(1.5)])
