@@ -45,9 +45,14 @@ def generate_data(correlation_distribution: List[float], dataset_size=10000,
     return df.reindex_axis(shuffled, axis=1)
 
 
-def plateau_distribution(total_feature_count: int, relevant_mutual_information: float = 1.0) -> List[float]:
+def plateau_distribution(total_feature_count: int, relevant_mutual_information: float = 0.5) -> List[float]:
     return [((relevant_mutual_information - x / 10) if x < .3 else exp(-10 * x)) for x in
             np.linspace(0, 1, num=total_feature_count)]
+
+
+def linearly_relevant_features(num: int = 20, relevant_mutual_information: float = .5, relative_maximal_difference=.1):
+    return [relevant_mutual_information * (1 + relative_maximal_difference * (.5 - x))
+            for x in np.linspace(0, 1, num=num)]
 
 
 def code_length(p: float) -> float:

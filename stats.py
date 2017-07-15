@@ -15,6 +15,10 @@ def phi(x: float) -> float:
 
 
 class GaussianRandomVariable:
+    """
+        Represents a normally distributed random variable. 
+    """
+
     def __init__(self, mean: float, variance: float):
         self.variance = variance
         self.mean = mean
@@ -27,20 +31,31 @@ class GaussianRandomVariable:
         return GaussianRandomVariable(mean=self.mean - other.mean, variance=self.variance + other.variance)
 
     @lazy
+    def _mean_relative_to_standard_deviation(self):
+        return self.mean / self.standard_deviation
+
+    @lazy
     def p_is_positive(self):
-        return phi(self.mean / self.standard_deviation)
+        return phi(self._mean_relative_to_standard_deviation)
 
     @property
     def expected_value_if_truncated_of_negative_mapped_to_0(self):
         return self.mean * self.p_is_positive + \
-               self.standard_deviation * standard_gaussian(-self.mean / self.standard_deviation)
+               self.standard_deviation * standard_gaussian(-self._mean_relative_to_standard_deviation)
 
     @property
     def expected_value_given_positive(self):
         return self.expected_value_if_truncated_of_negative_mapped_to_0 / self.p_is_positive
 
+    def __repr__(self):
+        return f'N({self.mean:0.2f}, {self.standard_deviation:0.2f})'
+
 
 class ValuesWithStats:
+    """
+        Allows collecting samples from a single, arbitrary distribution that can thereby be estimated.
+    """
+
     def __init__(self):
         self.values = []
         self.sum = 0.0
@@ -79,3 +94,6 @@ class ValuesWithStats:
     @property
     def mean_as_gaussian(self) -> GaussianRandomVariable:
         return GaussianRandomVariable(self.mean, variance=self.variance_of_mean)
+
+    def __repr__(self):
+        return str(self.mean_as_gaussian)
