@@ -1,7 +1,7 @@
 import random
 from math import sqrt, log
 from pathlib import Path
-from typing import Callable, Tuple, Dict, List
+from typing import Callable, Tuple, Dict
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -18,16 +18,22 @@ class Items:
     def __init__(self, relevance_by_feature: Dict[str, RandomVariableSamples],
                  true_relevance_by_feature: Dict[str, float],
                  num_features_to_select: int, iteration: int, name: str):
+        self.true_relevance_by_feature = true_relevance_by_feature
+        self.num_features_to_select = num_features_to_select
         self.name = name
-        self.true_relevances = sorted(true_relevance_by_feature.items(), key=lambda x: x[1], reverse=True)
-        self.features = [feature for feature, _ in self.true_relevances]
-        self.relevant_features = set(feature for feature, correlation in self.true_relevances[:num_features_to_select])
+
         self.iteration = iteration
         self.relevance_by_feature = relevance_by_feature  # type:Dict[str, RandomVariableSamples]
         self.sorted_features = sorted(list(relevance_by_feature.items()), key=lambda x: x[1].mean, reverse=True)
         self.selected = self.sorted_features[:num_features_to_select]
         self.non_selected = self.sorted_features[num_features_to_select:]
-        self.num_selected_relevant_features = len(set(feature for feature, correlation in self.selected).intersection(self.relevant_features))
+
+        self.true_relevances = sorted(self.true_relevance_by_feature.items(), key=lambda x: x[1], reverse=True)
+        self.features = [feature for feature, _ in self.true_relevances]
+        self.relevant_features = set(
+            feature for feature, correlation in self.true_relevances[:self.num_features_to_select])
+        self.num_selected_relevant_features = len(
+            set(feature for feature, correlation in self.selected).intersection(self.relevant_features))
 
     def save_plot(self, color='red'):
         plt.ylabel('mutual information')
@@ -56,6 +62,7 @@ class Items:
                      color=color)
 
         plt.savefig(str(Path('.') / 'plots' / f'{timestamp()}.png'))
+        plt.clf()
 
 
 class Strategy:
