@@ -1,11 +1,13 @@
 import random
 from math import sqrt, log
+from pathlib import Path
 from typing import Callable, Tuple, Dict, List
 
 import numpy as np
 from matplotlib import pyplot as plt
 
 from stats import RandomVariableSamples
+from util import timestamp
 
 
 class Items:
@@ -27,7 +29,7 @@ class Items:
         self.non_selected = self.sorted_features[num_features_to_select:]
         self.num_selected_relevant_features = len(set(feature for feature, correlation in self.selected).intersection(self.relevant_features))
 
-    def show_plot(self, color='red'):
+    def save_plot(self, color='red'):
         plt.ylabel('mutual information')
         plt.xlabel('feature')
 
@@ -53,7 +55,7 @@ class Items:
                      markersize=markersize,
                      color=color)
 
-        plt.show()
+        plt.savefig(str(Path('.') / 'plots' / f'{timestamp()}.png'))
 
 
 class Strategy:

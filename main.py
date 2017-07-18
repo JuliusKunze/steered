@@ -1,5 +1,4 @@
 from pathlib import Path
-from time import strftime
 from typing import List, Dict
 
 import matplotlib.pyplot as plt
@@ -9,16 +8,13 @@ from hics.contrast_measure import HiCS
 from data import generate_data, linearly_relevant_features
 from stats import RandomVariableSamples
 from strategy import Strategy, exploitation_strategy, Items, gaussian_strategy
+from util import timestamp
 
 plt.rcParams["figure.figsize"] = (19.20 / 2, 10.80 / 2)
 
 
-def timestamp() -> str:
-    return strftime('%Y%m%d-%H%M%S')
-
-
 def main(relevance_distribution: List[float], strategies: List[Strategy], num_features_to_select=10,
-         iterations=500, runs=1, alpha=.01):
+         iterations=500, runs=20, alpha=.001):
     def run_hics(data, strategy: Strategy, plot_step=iterations) -> List[float]:
         features_with_target = data.columns.values  # type:List[str]
         features = list(filter(lambda i: i != 'target', features_with_target))
@@ -39,7 +35,7 @@ def main(relevance_distribution: List[float], strategies: List[Strategy], num_fe
                           name=strategy.name)
 
             if iteration % plot_step == plot_step - 1:
-                items.show_plot()
+                items.save_plot()
 
             selected_relevant_feature_counts.append(items.num_selected_relevant_features)
 
@@ -90,7 +86,7 @@ def show_distribution(distribution: List[float]):
 if __name__ == '__main__':
     exploit_strategies = [exploitation_strategy(exploitation) for exploitation in (0, .5, 1, 1.5, 2, 2.5, 3)]
 
-    distribution = linearly_relevant_features() + [.2] * 20
+    distribution = linearly_relevant_features() + [.2] * 80
 
     # show_distribution(distribution)
 
