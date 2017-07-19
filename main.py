@@ -3,49 +3,21 @@ from typing import List, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
-from hics.contrast_measure import HiCS
+import pandas
+import sklearn
+from pandas import DataFrame
 
+import real_data
+from steered import select_features
+from strategy import Strategy, exploitation_strategy, gaussian_strategy, random_strategy
 from synthetic_data import generate_data
-from stats import RandomVariableSamples
-from strategy import Strategy, exploitation_strategy, Items, gaussian_strategy
 from util import timestamp
 
 plt.rcParams["figure.figsize"] = (19.20 / 2, 10.80 / 2)
 
 
-def main(relevance_distribution: List[float], strategies: List[Strategy], num_features_to_select,
-         iterations, runs=1, alpha=.001):
-    def run_hics(data, strategy: Strategy, plot_step=iterations) -> List[float]:
-        features_with_target = data.columns.values  # type:List[str]
-        features = list(filter(lambda i: i != 'target', features_with_target))
-        hics = HiCS(data, alpha=alpha, iterations=1, categorical_features=features_with_target)
-        # initial_hics = HiCS(data, alpha=alpha, iterations=500, categorical_features=features_with_target)
-
-        relevance_by_feature = dict(
-            [(feature, RandomVariableSamples()) for feature in features])  # type:Dict[str, RandomVariableSamples]
-
-        true_relevance_by_feature = dict([(feature, relevance_distribution[int(feature)]) for feature in features])
-        # dict([(feature, initial_hics.calculate_contrast([feature], 'target')) for feature in features])
-        selected_relevant_feature_counts = []
-
-        for iteration in range(iterations):
-            items = Items(relevance_by_feature=relevance_by_feature, num_features_to_select=num_features_to_select,
-                          iteration=iteration, true_relevance_by_feature=true_relevance_by_feature,
-                          name=strategy.name)
-
-            selected_relevant_feature_counts.append(items.num_selected_relevant_features)
-
-            feature, value = strategy.choose(items)
-
-            relevance_by_feature[feature].append(hics.calculate_contrast([feature], 'target'))
-
-            if iteration % plot_step == plot_step - 1:
-                items.save_plot()
-
-            print(f"Iteration {iteration}, chosen relevant features: {items.num_selected_relevant_features}")
-
-        return selected_relevant_feature_counts
-
+def main(data_for_runs: List[DataFrame], strategies: List[Strategy], num_features_to_select,
+         iterations, true_relevances=None, runs=1):
     def plot_summary(relevance_by_run_by_time_by_strategy: Dict[str, np.ndarray]):
         plt.ylabel('chosen relevant features')
         plt.xlabel('iteration')
@@ -61,7 +33,7 @@ def main(relevance_distribution: List[float], strategies: List[Strategy], num_fe
                              color=color, alpha=.15)
             plt.plot(average, label=strategy.name, c=color)
         plt.legend(loc=2)
-        title = f"{len(relevance_distribution)}features_{runs}runs"
+        title = f"{len(true_relevances)}features_{runs}runs"
         plt.title(title)
         directory = Path(".") / "plots"
         directory.mkdir(exist_ok=True)
@@ -69,10 +41,11 @@ def main(relevance_distribution: List[float], strategies: List[Strategy], num_fe
         fig.savefig(str(directory / f"{timestamp()}_{title}.svg"))
         plt.show()
 
-    data_for_runs = [generate_data(correlation_distribution=relevance_distribution) for _ in range(runs)]
-
     mutual_information_by_run_by_time_by_strategy = dict([(strategy, np.array(
-        [run_hics(data=data, strategy=strategy) for data in data_for_runs])) for strategy in strategies])
+        [select_features(data=data, strategy=strategy, num_features_to_select=num_features_to_select,
+                         iterations=iterations,
+                         plot_step=iterations, true_relevances=true_relevances)[1] for data in data_for_runs])) for
+                                                          strategy in strategies])
 
     plot_summary(mutual_information_by_run_by_time_by_strategy)
 
@@ -82,12 +55,33 @@ def show_distribution(distribution: List[float]):
     plt.show()
 
 
-if __name__ == '__main__':
+def synthetic():
     exploit_strategies = [exploitation_strategy(exploitation) for exploitation in (0, .5, 1, 1.5, 2, 2.5, 3)]
-
-    distribution = [.6] * 20 + [.585] * 40 + [0] * 140  # linearly_relevant_features() + [.2] * 80
-
+    distribution = [.6] * 5 + [.585] * 10 + [0] * 20  # linearly_relevant_features() + [.2] * 80
+    data_for_runs = [generate_data(relevance_distribution=distribution) for _ in range(1)]
     # show_distribution(distribution)
-
-    main(relevance_distribution=distribution, num_features_to_select=20, iterations=1000,
+    main(data_for_runs, num_features_to_select=5, iterations=100, true_relevances=distribution,
          strategies=[gaussian_strategy(), exploitation_strategy(0)])  # exploitation_strategy(1.5)])
+
+
+def real(strategy=gaussian_strategy(), iterations=1000):
+    bundle = sklearn.datasets.load_digits()
+
+    data = real_data.dataframe(bundle)  # real_data.thrombin().iloc[:, range(100)]
+
+    print(f'{bundle.data.shape[1]} features')
+    selected_features, stats = select_features(data, strategy=strategy, num_features_to_select=10,
+                                               iterations=iterations,
+                                               plot_step=iterations)
+
+    print(f'{selected_features} features selected')
+
+    data_selected = pandas.DataFrame(data, columns=['target'] + list(selected_features))
+
+    print(data_selected.shape)
+
+    print(f'f1 scores {real_data.classify(real_data.bunch(data_selected))}')
+
+
+if __name__ == '__main__':
+    real()

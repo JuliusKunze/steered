@@ -1,16 +1,33 @@
 from collections import defaultdict
 from pathlib import Path
 
+import numpy
+import numpy as np
 import pandas
 from sklearn import datasets
-from sklearn.datasets.base import Bunch, load_digits, load_iris
+from sklearn.datasets.base import Bunch, load_iris
 from sklearn.model_selection import cross_val_score
 from sklearn.neighbors import KNeighborsClassifier
 
 data_directory = Path('.') / 'data'
 
 
-def classify(data=datasets.load_breast_cancer()):
+def dataframe(bunch: Bunch):
+    X = bunch.data
+    y = np.expand_dims(bunch.target, axis=1)
+    return pandas.DataFrame(numpy.concatenate([y, X], axis=1), columns=['target'] + [str(i) for i in range(X.shape[1])])
+
+
+def bunch(data: pandas.DataFrame):
+    target = 'target'
+
+    y = data[target]
+    X = data.drop(target, axis=1)
+
+    return Bunch(data=X, target=y)
+
+
+def classify(data=datasets.load_digits()):
     X = data.data
     y = data.target
     classifier = KNeighborsClassifier()
@@ -47,26 +64,10 @@ def thrombin() -> pandas.DataFrame:
         # data = pandas.read_csv(str(thrombin_dir / 'thrombin.data'), delimiter=',', header=None, dtype='bool',
         #                       converters={0: lambda x: x == 'A'}) #, usecols=range(100))
 
-    data.to_pickle(str(pickle_file))
+    # data.to_pickle(str(pickle_file))
+
 
     return data
 
 
-def load_thrombin():
-    data = thrombin()
-
-    print(data.shape)
-
-    target = 0
-    data = data.iloc[:, range(1000)]
-
-    y = data.iloc[:, target]
-    X = data.drop(target, axis=1)
-
-    print(y.shape)
-    print(X.shape)
-
-    return Bunch(data=X, target=y)
-
-
-classify(load_iris())
+# classify(load_iris())

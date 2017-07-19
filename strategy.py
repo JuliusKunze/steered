@@ -15,34 +15,36 @@ class Items:
     Information that is needed allow a decision which feature should be evaluated next using HiCS.
     """
 
-    def __init__(self, relevance_by_feature: Dict[str, RandomVariableSamples],
-                 true_relevance_by_feature: Dict[str, float],
+    def __init__(self, relevance_by_feature: Dict[int, RandomVariableSamples],
+                 true_relevance_by_feature: Dict[int, float],
                  num_features_to_select: int, iteration: int, name: str):
         self.true_relevance_by_feature = true_relevance_by_feature
         self.num_features_to_select = num_features_to_select
         self.name = name
 
         self.iteration = iteration
-        self.relevance_by_feature = relevance_by_feature  # type:Dict[str, RandomVariableSamples]
+        self.estimated_relevance_by_feature = relevance_by_feature  # type:Dict[str, RandomVariableSamples]
         self.sorted_features = sorted(list(relevance_by_feature.items()), key=lambda x: x[1].mean, reverse=True)
         self.selected = self.sorted_features[:num_features_to_select]
         self.non_selected = self.sorted_features[num_features_to_select:]
 
         self.true_relevances = sorted(self.true_relevance_by_feature.items(), key=lambda x: x[1], reverse=True)
         self.features = [feature for feature, _ in self.true_relevances]
-        self.relevant_features = set(
+        self.true_relevant_features = set(
             feature for feature, correlation in self.true_relevances[:self.num_features_to_select])
+        self.selected_features = [s for s, v in self.selected]
+
         self.num_selected_relevant_features = len(
-            set(feature for feature, correlation in self.selected).intersection(self.relevant_features))
+            set(feature for feature, correlation in self.selected).intersection(self.true_relevant_features))
 
     def save_plot(self, color='red'):
-        plt.ylabel('mutual information')
+        plt.ylabel('mutual information / bits')
         plt.xlabel('feature')
 
-        means = np.array([self.relevance_by_feature[feature].mean for feature in self.features])
-        scaled_counts = np.array([self.relevance_by_feature[feature].count / 100 for feature in self.features])
+        means = np.array([self.estimated_relevance_by_feature[feature].mean for feature in self.features])
+        scaled_counts = np.array([self.estimated_relevance_by_feature[feature].count / 100 for feature in self.features])
         standard_deviations = np.array(
-            [self.relevance_by_feature[feature].mean_as_gaussian.standard_deviation for feature in self.features])
+            [self.estimated_relevance_by_feature[feature].mean_as_gaussian.standard_deviation for feature in self.features])
 
         markersize = 2
         indices = range(len(means))
@@ -85,7 +87,7 @@ class Strategy:
 
 def random_strategy():
     def choose_random(items: Items) -> Tuple[str, RandomVariableSamples]:
-        return random.choice(items)
+        return random.choice(items.sorted_features)
 
     return Strategy(choose_random, name='random')
 
