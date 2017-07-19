@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from hics.contrast_measure import HiCS
 
-from data import generate_data
+from synthetic_data import generate_data
 from stats import RandomVariableSamples
 from strategy import Strategy, exploitation_strategy, Items, gaussian_strategy
 from util import timestamp
@@ -13,8 +13,8 @@ from util import timestamp
 plt.rcParams["figure.figsize"] = (19.20 / 2, 10.80 / 2)
 
 
-def main(relevance_distribution: List[float], strategies: List[Strategy], num_features_to_select=10,
-         iterations=500, runs=1, alpha=.001):
+def main(relevance_distribution: List[float], strategies: List[Strategy], num_features_to_select,
+         iterations, runs=1, alpha=.001):
     def run_hics(data, strategy: Strategy, plot_step=iterations) -> List[float]:
         features_with_target = data.columns.values  # type:List[str]
         features = list(filter(lambda i: i != 'target', features_with_target))
@@ -33,16 +33,16 @@ def main(relevance_distribution: List[float], strategies: List[Strategy], num_fe
                           iteration=iteration, true_relevance_by_feature=true_relevance_by_feature,
                           name=strategy.name)
 
-            if iteration % plot_step == plot_step - 1:
-                items.save_plot()
-
             selected_relevant_feature_counts.append(items.num_selected_relevant_features)
 
             feature, value = strategy.choose(items)
 
-            print(f"Iteration {iteration}, chosen relevant features: {items.num_selected_relevant_features}")
-
             relevance_by_feature[feature].append(hics.calculate_contrast([feature], 'target'))
+
+            if iteration % plot_step == plot_step - 1:
+                items.save_plot()
+
+            print(f"Iteration {iteration}, chosen relevant features: {items.num_selected_relevant_features}")
 
         return selected_relevant_feature_counts
 
@@ -66,7 +66,7 @@ def main(relevance_distribution: List[float], strategies: List[Strategy], num_fe
         directory = Path(".") / "plots"
         directory.mkdir(exist_ok=True)
         fig = plt.gcf()
-        fig.savefig(str(directory / f"{timestamp()}_{title}.png"))
+        fig.savefig(str(directory / f"{timestamp()}_{title}.svg"))
         plt.show()
 
     data_for_runs = [generate_data(correlation_distribution=relevance_distribution) for _ in range(runs)]
@@ -85,9 +85,9 @@ def show_distribution(distribution: List[float]):
 if __name__ == '__main__':
     exploit_strategies = [exploitation_strategy(exploitation) for exploitation in (0, .5, 1, 1.5, 2, 2.5, 3)]
 
-    distribution = [.6] * 10 + [.58] * 20 + [0] * 70  # linearly_relevant_features() + [.2] * 80
+    distribution = [.6] * 20 + [.585] * 40 + [0] * 140  # linearly_relevant_features() + [.2] * 80
 
     # show_distribution(distribution)
 
-    main(relevance_distribution=distribution,
-         strategies=[exploitation_strategy(0), gaussian_strategy()])  # exploitation_strategy(1.5)])
+    main(relevance_distribution=distribution, num_features_to_select=20, iterations=1000,
+         strategies=[gaussian_strategy(), exploitation_strategy(0)])  # exploitation_strategy(1.5)])

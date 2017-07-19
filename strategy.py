@@ -6,7 +6,7 @@ from typing import Callable, Tuple, Dict
 import numpy as np
 from matplotlib import pyplot as plt
 
-from stats import RandomVariableSamples
+from stats import RandomVariableSamples, GaussianRandomVariable
 from util import timestamp
 
 
@@ -40,18 +40,26 @@ class Items:
         plt.xlabel('feature')
 
         means = np.array([self.relevance_by_feature[feature].mean for feature in self.features])
+        scaled_counts = np.array([self.relevance_by_feature[feature].count / 100 for feature in self.features])
         standard_deviations = np.array(
             [self.relevance_by_feature[feature].mean_as_gaussian.standard_deviation for feature in self.features])
 
         markersize = 2
-        plt.plot(range(len(means)), [true_relevance for f, true_relevance in self.true_relevances], linestyle="None",
+        indices = range(len(means))
+
+        plt.plot(indices, scaled_counts, linestyle="None",
+                 marker="o",
+                 markersize=markersize,
+                 color='green')
+
+        plt.plot(indices, [true_relevance for f, true_relevance in self.true_relevances], linestyle="None",
                  marker="o",
                  markersize=markersize,
                  color='blue')
 
         standard_deviations[standard_deviations == np.inf] = .5
 
-        plt.errorbar(range(len(means)),
+        plt.errorbar(indices,
                      list(means),
                      list(standard_deviations),
                      linestyle="None",
@@ -89,8 +97,7 @@ def gaussian_strategy():
         def loss(pair):
             s, n = pair
 
-            return (
-                n[1].mean_as_gaussian - s[1].mean_as_gaussian).expected_value_if_truncated_of_negative_mapped_to_0
+            return (n[1].mean_as_gaussian - s[1].mean_as_gaussian).expected_value_if_truncated_of_negative_mapped_to_0
 
         s, n = max(selected_nonselected_pairs, key=loss)
 
