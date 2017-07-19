@@ -116,7 +116,7 @@ def gaussian_strategy():
 
         s, n = max(selected_nonselected_pairs, key=loss)
 
-        return random.choice([s, n])  # s if s[1].variance_of_mean > n[1].variance_of_mean else n
+        return s if s[1].variance_of_mean > n[1].variance_of_mean else n # random.choice([s, n])
 
     return Strategy(choose_by_gaussian, name='gaussian')
 
