@@ -128,4 +128,4 @@ def f1_score_real():
 
 
 if __name__ == '__main__':
-    synthetic()
+    run_series()
