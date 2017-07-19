@@ -63,7 +63,7 @@ def run_series():
     # linearly_relevant_features() + [.2] * 80
     # show_distribution(distribution)
 
-    all_num_features = [20, 50, 100, 150, 200, 300]
+    all_num_features = [20, 50, 100, 150, 200, 300, 400]
 
     results = []
 
