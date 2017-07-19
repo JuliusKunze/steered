@@ -9,7 +9,7 @@ from pandas import DataFrame
 
 import real_data
 from steered import select_features
-from strategy import Strategy, exploitation_strategy, gaussian_strategy
+from strategy import Strategy, exploitation_strategy, gaussian_strategy, random_strategy
 from synthetic_data import generate_data
 from util import timestamp
 
@@ -93,8 +93,10 @@ def score_selected_features(data, selected_features):
 
 
 if __name__ == '__main__':
-    strategies = [exploitation_strategy(), gaussian_strategy()]
+    strategies = [gaussian_strategy()] * 10
 
-    scores = dict([(s.name, real(s)) for s in strategies])
+    scores = [real(s) for s in strategies]
 
-    print(f'f1 scores {scores}')
+    average = np.average(scores)
+
+    print(f'f1 score {average} +- {np.std(scores)} ({scores})')

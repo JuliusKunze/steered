@@ -6,7 +6,7 @@ import numpy as np
 import pandas
 from sklearn.datasets.base import Bunch
 from sklearn.model_selection import cross_val_score
-from sklearn.neural_network import MLPClassifier
+from sklearn.neighbors import KNeighborsClassifier
 
 data_directory = Path('.') / 'data'
 
@@ -31,7 +31,7 @@ def classify(data):
 
     X = data.data
     y = data.target
-    classifier = MLPClassifier(hidden_layer_sizes=(5,), max_iter=1000)
+    classifier = KNeighborsClassifier()  # MLPClassifier(hidden_layer_sizes=(5,), max_iter=1000)
     return cross_val_score(classifier, X, y, cv=4, scoring='f1_macro')
 
 
