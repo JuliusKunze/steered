@@ -72,7 +72,7 @@ def run_series():
     for num_features in all_num_features:
         distribution = [.6] * 10 + [.585] * 10 + [0] * (num_features - 20)
 
-        data_for_runs = [generate_data(relevance_distribution=distribution) for _ in range(3)]
+        data_for_runs = [generate_data(relevance_distribution=distribution) for _ in range(20)]
 
         results.append(run_batch(data_for_runs, num_features_to_select=10, iterations=200 + 2 * num_features,
                                  true_relevances=distribution,
