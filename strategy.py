@@ -118,7 +118,7 @@ def gaussian_strategy():
 
         return s if s[1].variance_of_mean > n[1].variance_of_mean else n # random.choice([s, n])
 
-    return Strategy(choose_by_gaussian, name='gaussian')
+    return Strategy(choose_by_gaussian, name='proposed')
 
 
 def exploitation_strategy(exploitation: float = 0):
@@ -130,4 +130,4 @@ def exploitation_strategy(exploitation: float = 0):
 
         return max(items.sorted_features, key=priority)
 
-    return Strategy(choose_by_exploitation, name=f'exploit{exploitation}')
+    return Strategy(choose_by_exploitation, name=f'exploit{exploitation}' if exploitation != 0 else 'baseline')

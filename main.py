@@ -63,7 +63,7 @@ def run_series():
     # linearly_relevant_features() + [.2] * 80
     # show_distribution(distribution)
 
-    all_num_features = [20, 50, 100, 150, 200]
+    all_num_features = [20, 50, 100, 150, 200, 300]
 
     results = []
 
@@ -92,13 +92,10 @@ def show_distribution(distribution: List[float]):
 
 
 def synthetic():
-    # exploit_strategies = [exploitation_strategy(exploitation) for exploitation in (0, .5, 1, 1.5, 2, 2.5, 3)]
-    distribution = [.6] * 5 + [.585] * 10 + [0] * 20  # linearly_relevant_features() + [.2] * 80
-    data_for_runs = [generate_data(relevance_distribution=distribution) for _ in range(1)]
-    # show_distribution(distribution)
-    mutual_information_by_run_by_time_by_strategy = \
-        run_batch(data_for_runs, num_features_to_select=5, iterations=100, true_relevances=distribution,
-                  strategies=[gaussian_strategy(), exploitation_strategy(0)])  # exploitation_strategy(1.5)])
+    distribution = [.6] * 5 + [.585] * 10 + [0] * 20
+    data_for_runs = [generate_data(relevance_distribution=distribution) for _ in range(10)]
+    run_batch(data_for_runs, num_features_to_select=5, iterations=100, true_relevances=distribution,
+                  strategies=[gaussian_strategy()])
 
 
 def real(strategy=exploitation_strategy(), iterations=1000):
@@ -131,4 +128,4 @@ def f1_score_real():
 
 
 if __name__ == '__main__':
-    run_series()
+    synthetic()
