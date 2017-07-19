@@ -1,9 +1,10 @@
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 from hics.contrast_measure import HiCS
 
 from stats import RandomVariableSamples
 from strategy import Strategy, Items
+
 
 def select_features(data, strategy: Strategy, num_features_to_select: int, iterations: int, plot_step: int,
                     true_relevances: List[float] = None, alpha=.001) -> Tuple[List[str], List[float]]:

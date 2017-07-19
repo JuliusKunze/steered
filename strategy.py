@@ -6,7 +6,7 @@ from typing import Callable, Tuple, Dict
 import numpy as np
 from matplotlib import pyplot as plt
 
-from stats import RandomVariableSamples, GaussianRandomVariable
+from stats import RandomVariableSamples
 from util import timestamp
 
 
@@ -37,33 +37,27 @@ class Items:
         self.num_selected_relevant_features = len(
             set(feature for feature, correlation in self.selected).intersection(self.true_relevant_features))
 
-    def save_plot(self, color='red'):
-        plt.ylabel('mutual information / bits')
-        plt.xlabel('feature')
-
+    def save_plot(self, color='red', plot_true=False):
         means = np.array([self.estimated_relevance_by_feature[feature].mean for feature in self.features])
-        scaled_counts = np.array([self.estimated_relevance_by_feature[feature].count / 100 for feature in self.features])
+
+        new_order = [index for index, mean in sorted(enumerate(means), key=lambda x: x[1], reverse=True)]
+
+        counts = np.array([self.estimated_relevance_by_feature[feature].count for feature in self.features])
         standard_deviations = np.array(
-            [self.estimated_relevance_by_feature[feature].mean_as_gaussian.standard_deviation for feature in self.features])
+            [self.estimated_relevance_by_feature[feature].mean_as_gaussian.standard_deviation for feature in
+             self.features])
+        standard_deviations[standard_deviations == np.inf] = .5 # make inf distinguishable from 0
 
         markersize = 2
         indices = range(len(means))
 
-        plt.plot(indices, scaled_counts, linestyle="None",
-                 marker="o",
-                 markersize=markersize,
-                 color='green')
+        plt.figure(1)
+        plt.subplot(211)
 
-        plt.plot(indices, [true_relevance for f, true_relevance in self.true_relevances], linestyle="None",
-                 marker="o",
-                 markersize=markersize,
-                 color='blue')
-
-        standard_deviations[standard_deviations == np.inf] = .5
-
+        plt.ylabel('mutual information to target / bits')
         plt.errorbar(indices,
-                     list(means),
-                     list(standard_deviations),
+                     list(means[new_order]),
+                     list(standard_deviations[new_order]),
                      linestyle="None",
                      elinewidth=markersize / 2,
                      ecolor='red',
@@ -71,7 +65,26 @@ class Items:
                      markersize=markersize,
                      color=color)
 
-        plt.savefig(str(Path('.') / 'plots' / f'{timestamp()}.png'))
+        if plot_true:
+            plt.plot(indices, np.array([true_relevance for f, true_relevance in self.true_relevances])[new_order], linestyle="None",
+                     marker="o",
+                     markersize=markersize,
+                     color='blue')
+
+        plt.subplot(212)
+
+        plt.ylabel('HiCS iteration count')
+        plt.xlabel('feature')
+
+        plt.plot(indices, counts[new_order], linestyle="None",
+                 marker="o",
+                 markersize=markersize,
+                 color='green')
+
+        axes = plt.gca()
+        axes.set_ylim(bottom=0)
+
+        plt.savefig(str(Path('.') / 'plots' / f'{timestamp()}.pdf'))
         plt.clf()
 
 
@@ -103,12 +116,12 @@ def gaussian_strategy():
 
         s, n = max(selected_nonselected_pairs, key=loss)
 
-        return s if s[1].variance_of_mean > n[1].variance_of_mean else n
+        return random.choice([s, n])  # s if s[1].variance_of_mean > n[1].variance_of_mean else n
 
     return Strategy(choose_by_gaussian, name='gaussian')
 
 
-def exploitation_strategy(exploitation: float):
+def exploitation_strategy(exploitation: float = 0):
     def choose_by_exploitation(items: Items) -> Tuple[str, RandomVariableSamples]:
         def priority(x):
             feature, stats = x

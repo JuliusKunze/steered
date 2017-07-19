@@ -9,11 +9,17 @@ from pandas import DataFrame
 
 import real_data
 from steered import select_features
-from strategy import Strategy, exploitation_strategy, gaussian_strategy, random_strategy
+from strategy import Strategy, exploitation_strategy, gaussian_strategy
 from synthetic_data import generate_data
 from util import timestamp
 
 plt.rcParams["figure.figsize"] = (19.20 / 2, 10.80 / 2)
+
+import random
+
+
+def choose_random(X, N):
+    return list(map(lambda _: random.choice(X), range(N)))
 
 
 def main(data_for_runs: List[DataFrame], strategies: List[Strategy], num_features_to_select,
@@ -38,7 +44,7 @@ def main(data_for_runs: List[DataFrame], strategies: List[Strategy], num_feature
         directory = Path(".") / "plots"
         directory.mkdir(exist_ok=True)
         fig = plt.gcf()
-        fig.savefig(str(directory / f"{timestamp()}_{title}.svg"))
+        fig.savefig(str(directory / f"{timestamp()}_{title}.pdf"))
         plt.show()
 
     mutual_information_by_run_by_time_by_strategy = dict([(strategy, np.array(
@@ -64,7 +70,7 @@ def synthetic():
          strategies=[gaussian_strategy(), exploitation_strategy(0)])  # exploitation_strategy(1.5)])
 
 
-def real(strategy=gaussian_strategy(), iterations=1000):
+def real(strategy=exploitation_strategy(), iterations=1000):
     bundle = sklearn.datasets.load_digits()
 
     data = real_data.dataframe(bundle)  # real_data.thrombin().iloc[:, range(100)]
@@ -74,14 +80,21 @@ def real(strategy=gaussian_strategy(), iterations=1000):
                                                iterations=iterations,
                                                plot_step=iterations)
 
+    return score_selected_features(data, selected_features) # choose_random(list(data.columns.values)[1:], N=1))
+
+
+def score_selected_features(data, selected_features):
     print(f'{selected_features} features selected')
 
-    data_selected = pandas.DataFrame(data, columns=['target'] + list(selected_features))
+    data_selected = pandas.DataFrame(data, columns=['target'] + selected_features)
+    list(selected_features)
 
-    print(data_selected.shape)
-
-    print(f'f1 scores {real_data.classify(real_data.bunch(data_selected))}')
+    return np.average(real_data.classify(real_data.bunch(data_selected)))
 
 
 if __name__ == '__main__':
-    real()
+    strategies = [exploitation_strategy(), gaussian_strategy()]
+
+    scores = dict([(s.name, real(s)) for s in strategies])
+
+    print(f'f1 scores {scores}')

@@ -4,10 +4,9 @@ from pathlib import Path
 import numpy
 import numpy as np
 import pandas
-from sklearn import datasets
-from sklearn.datasets.base import Bunch, load_iris
+from sklearn.datasets.base import Bunch
 from sklearn.model_selection import cross_val_score
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
 
 data_directory = Path('.') / 'data'
 
@@ -27,11 +26,13 @@ def bunch(data: pandas.DataFrame):
     return Bunch(data=X, target=y)
 
 
-def classify(data=datasets.load_digits()):
+def classify(data):
+    print(f'classifying on features with shape {data.data.shape}')
+
     X = data.data
     y = data.target
-    classifier = KNeighborsClassifier()
-    print(cross_val_score(classifier, X, y, cv=4, scoring='f1_macro'))
+    classifier = MLPClassifier(hidden_layer_sizes=(5,), max_iter=1000)
+    return cross_val_score(classifier, X, y, cv=4, scoring='f1_macro')
 
 
 def genes():
@@ -68,6 +69,5 @@ def thrombin() -> pandas.DataFrame:
 
 
     return data
-
 
 # classify(load_iris())
