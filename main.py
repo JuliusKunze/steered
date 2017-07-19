@@ -21,7 +21,7 @@ def choose_random(X, N):
     return list(map(lambda _: random.choice(X), range(N)))
 
 
-def plot_summary(relevance_by_x_by_run_by_strategy: Dict[str, np.ndarray], name: str = '', xlabel='iteration', xvalues=None):
+def plot_summary(relevance_by_x_by_run_by_strategy: Dict[str, np.ndarray], name: str = '', xlabel='iteration', xvalues=None, group_names=False):
     plt.ylabel('share of relevant features selected')
     plt.xlabel(xlabel)
     items = list(relevance_by_x_by_run_by_strategy.items())
@@ -94,8 +94,8 @@ def show_distribution(distribution: List[float]):
 def synthetic():
     distribution = [.6] * 5 + [.585] * 10 + [0] * 20
     data_for_runs = [generate_data(relevance_distribution=distribution) for _ in range(10)]
-    run_batch(data_for_runs, num_features_to_select=5, iterations=100, true_relevances=distribution,
-                  strategies=[gaussian_strategy()])
+    run_batch(data_for_runs, num_features_to_select=5, iterations=1000, true_relevances=distribution,
+                  strategies=[exploitation_strategy()])
 
 
 def real(strategy=exploitation_strategy(), iterations=1000):
@@ -128,4 +128,4 @@ def f1_score_real():
 
 
 if __name__ == '__main__':
-    run_series()
+    synthetic()
