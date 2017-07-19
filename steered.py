@@ -20,14 +20,14 @@ def select_features(data, strategy: Strategy, num_features_to_select: int, itera
         true_relevances = [0] * len(features)
 
     true_relevance_by_feature = dict([(feature, true_relevances[int(feature)]) for feature in features])
-    selected_relevant_feature_counts = []
+    selected_relevant_feature_shares = []
 
     for iteration in range(iterations):
         items = Items(relevance_by_feature=relevance_by_feature, num_features_to_select=num_features_to_select,
                       iteration=iteration, true_relevance_by_feature=true_relevance_by_feature,
                       name=strategy.name)
 
-        selected_relevant_feature_counts.append(items.num_selected_relevant_features)
+        selected_relevant_feature_shares.append(items.share_selected_relevant_features)
 
         feature, value = strategy.choose(items)
 
@@ -36,6 +36,6 @@ def select_features(data, strategy: Strategy, num_features_to_select: int, itera
         if iteration % plot_step == plot_step - 1:
             items.save_plot()
 
-        print(f"Iteration {iteration}, chosen relevant features: {items.num_selected_relevant_features}")
+        print(f"Iteration {iteration}, share of relevant features selected: {items.share_selected_relevant_features}")
 
-    return items.selected_features, selected_relevant_feature_counts
+    return items.selected_features, selected_relevant_feature_shares

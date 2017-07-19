@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from stats import RandomVariableSamples
-from util import timestamp
+from util import timestamp, timestamp_directory
 
 
 class Items:
@@ -34,8 +34,8 @@ class Items:
             feature for feature, correlation in self.true_relevances[:self.num_features_to_select])
         self.selected_features = [s for s, v in self.selected]
 
-        self.num_selected_relevant_features = len(
-            set(feature for feature, correlation in self.selected).intersection(self.true_relevant_features))
+        self.share_selected_relevant_features = len(
+            set(feature for feature, correlation in self.selected).intersection(self.true_relevant_features)) / num_features_to_select
 
     def save_plot(self, color='red', plot_true=False):
         means = np.array([self.estimated_relevance_by_feature[feature].mean for feature in self.features])
@@ -84,7 +84,7 @@ class Items:
         axes = plt.gca()
         axes.set_ylim(bottom=0)
 
-        plt.savefig(str(Path('.') / 'plots' / f'{timestamp()}.pdf'))
+        plt.savefig(str(timestamp_directory / f'{timestamp()}.pdf'))
         plt.clf()
 
 
