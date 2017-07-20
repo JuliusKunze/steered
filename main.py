@@ -66,7 +66,7 @@ def run_batch(data_for_runs: List[DataFrame], strategies: List[Strategy], num_fe
 
 
 def run_dimensionality():
-    all_num_features = [20, 50, 100, 150, 200, 300, 400]
+    all_num_features = [20, 50, 100, 150, 200]
 
     results = []
 
@@ -163,4 +163,4 @@ def f1_score_real():
 
 
 if __name__ == '__main__':
-    run_distributions()
+    run_dimensionality()

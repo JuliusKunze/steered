@@ -35,10 +35,10 @@ def plot_runtime():
 def plot_distributions():
     title = "distributions"
 
-    proposedMeans = [0.766666666667, 0.933333333333, 0.9]
-    proposedStds = [0.0471404520791, 0.0471404520791, 0.0]
-    baselineMeans = [0.6, 0.9, 0.9]
-    baselineStds = [0.141421356237, 0.0816496580928, 0.0816496580928]
+    proposedMeans = [0.715, 0.91, 0.955]
+    proposedStds = [0.155804364509, 0.07, 0.0589491306128]
+    baselineMeans = [0.735, 0.85, 0.925]
+    baselineStds = [0.131434394281, 0.0866025403784, 0.0622494979899]
 
     ylabel = 'share of relevant features selected'
     xlabel = 'relevance distribution'
