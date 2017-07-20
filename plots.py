@@ -20,7 +20,6 @@ def plot_runtime():
 
     proposedMeans = [13.528346545714886, 10.117791139532347, 11.311129187862388]
     proposedStds = [0.6546116197874118, 0.28226746046907586, 1.2197720987320115]
-
     baselineMeans = [5.61081526670605, 7.868961964687332, 10.373363356303889]
     baselineStds = [0.6207300805105078, 0.21140644188581317, 0.8547104563218956]
 
@@ -36,17 +35,15 @@ def plot_runtime():
 def plot_distributions():
     title = "distributions"
 
-    proposedMeans = [0.84, 0.98, 0.82]
-    proposedStds = [0.08, 0.04, 0.04]
-    baselineMeans = [0.86, 0.94, 0.84]
-    baselineStds = [0.08, 0.0489897948557, 0.0489897948557]
-
-    group_names = ['segments', 'linear', 'many relevant']
+    proposedMeans = [0.766666666667, 0.933333333333, 0.9]
+    proposedStds = [0.0471404520791, 0.0471404520791, 0.0]
+    baselineMeans = [0.6, 0.9, 0.9]
+    baselineStds = [0.141421356237, 0.0816496580928, 0.0816496580928]
 
     ylabel = 'share of relevant features selected'
     xlabel = 'relevance distribution'
 
-    bar_plot(baselineMeans, baselineStds, proposedMeans, proposedStds, group_names, xlabel, ylabel, title=title)
+    bar_plot(baselineMeans, baselineStds, proposedMeans, proposedStds, distribution_names, xlabel, ylabel, title=title)
 
 
 def bar_plot(baselineMeans, baselineStds, proposedMeans, proposedStds, group_names, xlabel, ylabel, title):

@@ -90,7 +90,7 @@ def run_dimensionality():
 def run_distributions():
     num_features = 50
 
-    distributions = [[1 - math.exp(x - 3) for x in np.linspace(0, 1, num_features)],
+    distributions = [[1 - math.exp(8*(x - 1)) for x in np.linspace(0, 1, num_features)],
                      [.6] * 10 + [.585] * 10 + [0] * (num_features - 20),
                      [.1 * (1 - x) for x in np.linspace(0, 1, num_features)]]
 
@@ -109,7 +109,7 @@ def run_distributions():
     strategies = [gaussian_strategy(), exploitation_strategy(0)]
 
     for distribution in distributions:
-        data_for_runs = [generate_data(relevance_distribution=distribution) for _ in range(5)]
+        data_for_runs = [generate_data(relevance_distribution=distribution) for _ in range(20)]
 
         results.append(run_batch(data_for_runs, num_features_to_select=10, iterations=20 + 2 * num_features,
                                  true_relevances=distribution,
