@@ -54,7 +54,7 @@ class Items:
         plt.figure(1)
         plt.subplot(211)
 
-        plt.ylabel('mutual information to target / bits')
+        plt.ylabel('mutual information to target in bits')
         plt.errorbar(indices,
                      list(means[new_order]),
                      list(standard_deviations[new_order]),

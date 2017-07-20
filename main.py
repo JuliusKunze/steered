@@ -1,4 +1,4 @@
-from pathlib import Path
+import math
 from typing import List, Dict
 
 import matplotlib.pyplot as plt
@@ -8,6 +8,7 @@ import sklearn
 from pandas import DataFrame
 
 import real_data
+from plots import distribution_names
 from steered import select_features
 from strategy import Strategy, exploitation_strategy, gaussian_strategy
 from synthetic_data import generate_data
@@ -17,11 +18,13 @@ plt.rcParams["figure.figsize"] = (19.20 / 2, 10.80 / 2)
 
 import random
 
+
 def choose_random(X, N):
     return list(map(lambda _: random.choice(X), range(N)))
 
 
-def plot_summary(relevance_by_x_by_run_by_strategy: Dict[str, np.ndarray], name: str = '', xlabel='iteration', xvalues=None, group_names=False):
+def plot_summary(relevance_by_x_by_run_by_strategy: Dict[str, np.ndarray], name: str = '', xlabel='iteration',
+                 xvalues=None, print_stats=False):
     plt.ylabel('share of relevant features selected')
     plt.xlabel(xlabel)
     items = list(relevance_by_x_by_run_by_strategy.items())
@@ -29,6 +32,10 @@ def plot_summary(relevance_by_x_by_run_by_strategy: Dict[str, np.ndarray], name:
     for (strategy, mutual_information_by_x_by_run), color in zip(items, colors):
         average = np.average(mutual_information_by_x_by_run, axis=0)
         deviation = np.std(mutual_information_by_x_by_run, axis=0)
+
+        if print_stats:
+            print(f'{strategy.name}Means = [{", ".join([str(x) for x in list(average)])}]')
+            print(f'{strategy.name}Stds = [{", ".join([str(x) for x in list(deviation)])}]')
 
         x = xvalues if xvalues else range(len(average))
         plt.fill_between(x,
@@ -58,11 +65,7 @@ def run_batch(data_for_runs: List[DataFrame], strategies: List[Strategy], num_fe
     return final_relevancy_by_run_by_strategy
 
 
-def run_series():
-    # exploit_strategies = [exploitation_strategy(exploitation) for exploitation in (0, .5, 1, 1.5, 2, 2.5, 3)]
-    # linearly_relevant_features() + [.2] * 80
-    # show_distribution(distribution)
-
+def run_dimensionality():
     all_num_features = [20, 50, 100, 150, 200, 300, 400]
 
     results = []
@@ -77,13 +80,45 @@ def run_series():
         results.append(run_batch(data_for_runs, num_features_to_select=10, iterations=200 + 2 * num_features,
                                  true_relevances=distribution,
                                  strategies=strategies))
-        # exploitation_strategy(1.5)])
 
     to_plot = dict([(strategy, np.swapaxes([result[strategy] for result in results], 0, 1))
-          for strategy in strategies])
+                    for strategy in strategies])
 
-    plt.ylabel('relevant selected feature count')
     plot_summary(to_plot, xlabel='feature count', name=f'feature_counts', xvalues=all_num_features)
+
+
+def run_distributions():
+    num_features = 50
+
+    distributions = [[1 - math.exp(x - 3) for x in np.linspace(0, 1, num_features)],
+                     [.6] * 10 + [.585] * 10 + [0] * (num_features - 20),
+                     [.1 * (1 - x) for x in np.linspace(0, 1, num_features)]]
+
+    plt.ylabel('mutual information to target in bits')
+    plt.xlabel('feature')
+
+    for distribution in distributions:
+        plt.plot(distribution)
+
+    plt.legend(labels=distribution_names)
+
+    plt.savefig(str(timestamp_directory / ".." / "distribution_definitions.pdf"))
+
+    results = []
+
+    strategies = [gaussian_strategy(), exploitation_strategy(0)]
+
+    for distribution in distributions:
+        data_for_runs = [generate_data(relevance_distribution=distribution) for _ in range(5)]
+
+        results.append(run_batch(data_for_runs, num_features_to_select=10, iterations=20 + 2 * num_features,
+                                 true_relevances=distribution,
+                                 strategies=strategies))
+
+    to_plot = dict([(strategy, np.swapaxes([result[strategy] for result in results], 0, 1))
+                    for strategy in strategies])
+
+    plot_summary(to_plot, xlabel='feature count', name=f'feature_counts', print_stats=True)
 
 
 def show_distribution(distribution: List[float]):
@@ -95,7 +130,7 @@ def synthetic():
     distribution = [.6] * 5 + [.585] * 10 + [0] * 20
     data_for_runs = [generate_data(relevance_distribution=distribution) for _ in range(10)]
     run_batch(data_for_runs, num_features_to_select=5, iterations=1000, true_relevances=distribution,
-                  strategies=[exploitation_strategy()])
+              strategies=[exploitation_strategy()])
 
 
 def real(strategy=exploitation_strategy(), iterations=1000):
@@ -128,4 +163,4 @@ def f1_score_real():
 
 
 if __name__ == '__main__':
-    synthetic()
+    run_distributions()
